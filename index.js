@@ -1,5 +1,4 @@
 const fs = require("fs");
-const readline = require("readline");
 const P = require("pino");
 const { 
   default: makeWASocket, 
@@ -12,10 +11,7 @@ const { handleCommand } = require("./menu/case");
 const { loadSettings } = require("./settings");
 const { storeMessage, handleMessageRevocation } = require("./antidelete");
 const AntiLinkKick = require("./antilinkick.js");
-const { antibugHandler } = require("./antibug.js"); // ✅ import correct function
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const question = (text) => new Promise((resolve) => rl.question(text, resolve));
+const { antibugHandler } = require("./antibug.js"); 
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info");
@@ -51,7 +47,6 @@ async function startBot() {
 
     if (connection === "open") {  
       console.log("✅ [BOT ONLINE] Connected to WhatsApp!");  
-      rl.close();  
     }  
 
     if (connection === "close") {  
@@ -154,9 +149,8 @@ async function startBot() {
     // ✅ AntiBug
     if (global.antibug === true && !msg.key.fromMe) {
       try {
-        const isBug = await antibugHandler({ conn: sock, m: msg }); // ✅ FIX
+        const isBug = await antibugHandler({ conn: sock, m: msg }); 
         if (isBug) {
-          
           return;
         }
       } catch (err) {
@@ -224,22 +218,36 @@ async function startBot() {
     }
   });
 
-  // ✅ Pairing code
+  // ✅ Headless Cloud Pairing Code System
   if (!state.creds?.registered) {
-    const phoneNumber = await question("📱 Enter your WhatsApp number (with country code): ");
-    await sock.requestPairingCode(phoneNumber.trim());
+    // Looks for PHONE_NUMBER inside Railway Environment Variables
+    const phoneNumber = process.env.PHONE_NUMBER;
 
-    setTimeout(() => {  
-      const code = sock.authState.creds?.pairingCode;  
-      if (code) {  
-        console.log("\n🔗 Pair this device using this code in WhatsApp:\n");  
-        console.log("   " + code + "\n");  
-        console.log("Go to WhatsApp → Linked Devices → Link with code.");  
-      } else {  
-        console.log("❌ Pairing code not found.");  
-      }  
-    }, 1000);
+    if (!phoneNumber) {
+      console.log("❌ ERROR: You must add 'PHONE_NUMBER' to your Railway Variables tab.");
+      return;
+    }
+
+    try {
+      console.log(`📱 Requesting pairing code for: ${phoneNumber.trim()}`);
+      await sock.requestPairingCode(phoneNumber.trim());
+      
+      setTimeout(() => {  
+        const code = sock.authState.creds?.pairingCode;  
+        if (code) {  
+          console.log("\n=============================================");
+          console.log("🔗 WHATSAPP PAIRING CODE:");
+          console.log(`👉  ${code}  👈`);
+          console.log("=============================================\n");
+        } else {  
+          console.log("❌ Pairing code generation delayed. Retrying on next restart.");
+        }  
+      }, 3000);
+    } catch (err) {
+      console.error("❌ Failed to request pairing code:", err.message);
+    }
   }
 }
 
 startBot();
+        
