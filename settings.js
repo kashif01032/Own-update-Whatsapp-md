@@ -11,9 +11,9 @@ module.exports = {
   // ⚙️ Feature Toggles & Mode Settings
   public: true,                 // 🌍 true = Everyone can use | false = Only Owner
   allowGroupCommands: true,     // 👥 true = Commands work in Groups | false = Only DM
-  autoTyping: false,            // ⌨️ Fake Typing
-  autoReact: false,             // 💖 Auto Emoji Reaction
-  autoStatusView: false,        // 👁️ Auto-View Status
+  autoTyping: true,             // ⌨️ Fake Typing - ENABLED
+  autoReact: true,              // 💖 Auto Emoji Reaction - ENABLED
+  autoStatusView: true,         // 👁️ Auto-View Status - ENABLED
   antiLink: false,              // 🚫 Delete Links in Groups
   antiBug: false,               // 🛡️ Prevent Malicious Crashes
   greetings: true,              // 🙋 Welcome/Farewell Messages
