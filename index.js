@@ -77,16 +77,21 @@ async function startBot() {
     if (update.qr || (connection === "connecting" && !state.creds?.registered) || (update.receivedPendingNotifications && !state.creds?.registered)) {
       setTimeout(async () => {
         if (!state.creds?.registered && !sock.authState.creds?.pairingCode) {
-          const phoneNumber = process.env.PHONE_NUMBER;
+          let phoneNumber = process.env.PHONE_NUMBER?.trim();
 
           if (!phoneNumber) {
             console.log("❌ ERROR: You must add 'PHONE_NUMBER' to your Railway Variables tab.");
             return;
           }
 
+          // ✅ Ensure phone number starts with + for WhatsApp pairing
+          if (!phoneNumber.startsWith("+")) {
+            phoneNumber = "+" + phoneNumber;
+          }
+
           try {
-            console.log(`📱 Requesting pairing code for: ${phoneNumber.trim()}`);
-            await sock.requestPairingCode(phoneNumber.trim());
+            console.log(`📱 Requesting pairing code for: ${phoneNumber}`);
+            await sock.requestPairingCode(phoneNumber);
             
             setTimeout(() => {  
               const code = sock.authState.creds?.pairingCode;  
@@ -277,4 +282,3 @@ async function startBot() {
 }
 
 startBot();
-                  
