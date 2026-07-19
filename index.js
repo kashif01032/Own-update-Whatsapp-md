@@ -42,7 +42,7 @@ async function startBot() {
 
   global.sock = sock;
   global.settings = settings;
-  global.signature = settings.signature || "> 𝗧𝗔𝗬𝗬𝗔𝗕 ❦ ✓";
+  global.signature = settings.signature || "> 𝘚𝘩𝘢𝘣𝘢𝘢𝘯 𝘎𝘪𝘭𝘭 ❦ ✓";
   global.owner = ownerJid;
   global.ownerNumber = ownerRaw;
 
@@ -257,7 +257,7 @@ async function startBot() {
 『 ${groupDesc} 』
 
 💀 *Attitude ON, Rules OFF*  
-👾 *${settings.botName || "MEGATRON BOT"} welcomes you with POWER* ⚡
+👾 *${settings.botName || "SHABAAN GILL BOT"} welcomes you with POWER* ⚡
           `;
         } else if (action === "remove") {
           message = `
