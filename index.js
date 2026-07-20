@@ -100,7 +100,7 @@ async function startBot() {
   try { setBotId(sock); } catch (e) { console.error('setBotId error', e); }
 
   global.settings = settings;
-  global.signature = settings.signature || "> 𝗧𝗔𝗬𝗬𝗔𝗕 ❦ ✓";
+  global.signature = settings.signature || "> 𝗦𝗛𝗔𝗕𝗔𝗔𝗡 ❦ ✓";
   global.owner = ownerJid;
   global.ownerNumber = ownerRaw;
 
@@ -138,11 +138,11 @@ async function startBot() {
       pairingCodeRequested = true;
       
       setTimeout(async () => {
-        // ✅ Get phone number from environment or prompt user
-        let phoneNumber = process.env.PHONE_NUMBER;
+        // ✅ PRIORITIZE settings.js number, then environment variables, then CLI prompt
+        let phoneNumber = ownerRaw || process.env.PHONE_NUMBER;
 
         if (!phoneNumber) {
-          console.log("📌 No PHONE_NUMBER found in environment variables.");
+          console.log("📌 No PHONE_NUMBER found in settings or environment variables.");
           console.log("⏳ Please provide your phone number to generate pairing code...\n");
           phoneNumber = await promptForPhoneNumber();
         } else {
@@ -168,7 +168,7 @@ async function startBot() {
           console.error("❌ Failed to request pairing code:", err.message);
           pairingCodeRequested = false;
         }
-      }, 5000); 
+      }, 3000); // Trigger quickly at 3 seconds
     }
 
     if (connection === "close") {  
@@ -333,7 +333,7 @@ async function startBot() {
           message = `
 ┏━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┓
    💠 *WELCOME TO HELL* 💠
-┗━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┛
+┗━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┓
 
 👹 *Hey ${tag}, Welcome to*  
 『 ${groupName} 』
@@ -368,3 +368,4 @@ async function startBot() {
 }
 
 startBot();
+      
