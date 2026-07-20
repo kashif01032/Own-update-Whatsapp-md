@@ -72,7 +72,9 @@ async function startBot() {
   global.ownerNumber = ownerRaw;
 
   // ✅ Read public/private status from settings config dynamically
-  global.publicMode = settings.public !== undefined ? settings.public : true; 
+  global.publicMode = settings.public !== undefined ? settings.public : true;
+  // ✅ FIX: FORCE PUBLIC MODE - Bot works everywhere
+  global.mode = "public";
 
   // ✅ Active Feature Flags mapped explicitly from your configuration file
   global.antilink = global.antilink || {};
@@ -85,7 +87,7 @@ async function startBot() {
   global.autorecording = settings.autoRecording || false;
 
   console.log("✅ BOT OWNER:", global.owner);
-  console.log(`🔓 BOT STATUS: ${global.publicMode ? "Public Mode Enabled (Active in all chats)" : "Private Mode Enabled (Owner only)"}`);
+  console.log(`🌍 BOT STATUS: PUBLIC MODE - Bot works in ALL chats (Private, Groups, Status, Communities)`);
 
   sock.ev.on("creds.update", saveCreds);
 
@@ -150,6 +152,9 @@ async function startBot() {
     if (!msg.message) return; // Ignore status updates or empty payload notifications
     
     const jid = msg.key.remoteJid;
+    const isGroup = jid.endsWith("@g.us");
+    const isStatus = jid === "status@broadcast";
+    const isCommunity = jid.includes("@newsletter") || jid.includes("@community");
     const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
 
     // ✅ AntiDelete
@@ -265,9 +270,9 @@ async function startBot() {
       }
     }
 
-    // ✅ Public/Private Mode command execution routing
+    // ✅ Command execution - NOW WORKS IN ALL CHAT TYPES (Private, Groups, Status, Communities)
     try {  
-      await handleCommand(sock, msg, { publicMode: global.publicMode });  
+      await handleCommand(sock, msg, { publicMode: true, isGroup, isStatus, isCommunity });  
     } catch (err) {  
       console.error("❌ Command error:", err.message || err);  
     }
