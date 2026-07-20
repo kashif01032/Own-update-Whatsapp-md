@@ -12,8 +12,7 @@ const {
   default: makeWASocket, 
   useMultiFileAuthState, 
   fetchLatestBaileysVersion, 
-  DisconnectReason,
-  delay // Added for rate-limit protection handling
+  DisconnectReason 
 } = require("@whiskeysockets/baileys");
 
 const { handleCommand } = require("./menu/case");
@@ -48,10 +47,9 @@ async function startBot() {
 
   global.sock = sock;
   global.settings = settings;
-  global.signature = settings.signature || "> 𝗦𝗛𝗔𝗕𝗔𝗔𝗡 𝗚𝗜𝗟𝗟 ❦ ✓";
+  global.signature = settings.signature || "> 𝗧𝗔𝗬𝗬𝗔𝗕 ❦ ✓";
   global.owner = ownerJid;
   global.ownerNumber = ownerRaw;
-  global.ownerName = settings.ownerName || "Shabaan Gill";
 
   // ✅ Read public/private status from settings config dynamically
   global.publicMode = settings.public !== undefined ? settings.public : true; 
@@ -66,7 +64,6 @@ async function startBot() {
   global.autostatus = settings.autoStatusView || false;
 
   console.log("✅ BOT OWNER:", global.owner);
-  console.log("👤 BOT OWNER NAME: ↳ ── 💎 𝘚𝘩𝘢𝘣𝘢𝘢𝘯 𝘎𝘪𝘭𝘭 💎 ──");
   console.log(`🔓 BOT STATUS: ${global.publicMode ? "Public Mode Enabled (Active in all chats)" : "Private Mode Enabled (Owner only)"}`);
 
   sock.ev.on("creds.update", saveCreds);
@@ -85,7 +82,7 @@ async function startBot() {
       pairingCodeRequested = true;
       
       setTimeout(async () => {
-        let phoneNumber = process.env.PHONE_NUMBER || global.ownerNumber;
+        let phoneNumber = process.env.PHONE_NUMBER;
 
         if (!phoneNumber) {
           console.log("❌ ERROR: You must add 'PHONE_NUMBER' to your Railway Variables tab.");
@@ -101,10 +98,9 @@ async function startBot() {
           const code = await sock.requestPairingCode(phoneNumber);
           
           if (code) {  
-            const formattedCode = code?.match(/.{1,4}/g)?.join("-") || code;
             console.log("\n=============================================");
             console.log("🔗 WHATSAPP PAIRING CODE:");
-            console.log(`👉  \x1b[36m${formattedCode}\x1b[0m  👈`);
+            console.log(`👉  ${code}  👈`);
             console.log("=============================================\n");
           } else {  
             console.log("❌ Pairing code generation returned empty. Check number format.");
@@ -114,7 +110,7 @@ async function startBot() {
           console.error("❌ Failed to request pairing code:", err.message);
           pairingCodeRequested = false;
         }
-      }, 6000); 
+      }, 5000); 
     }
 
     if (connection === "close") {  
@@ -133,7 +129,7 @@ async function startBot() {
     if (!msg.message) return; // Ignore status updates or empty payload notifications
     
     const jid = msg.key.remoteJid;
-    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || "";
+    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
 
     // ✅ AntiDelete
     if (settings.ANTIDELETE === true) {  
@@ -157,19 +153,10 @@ async function startBot() {
       }  
     }  
 
-    // ✅ AutoReact (Fully protected against connection history floods and rate limits)
-    if (global.autoreact && jid !== "status@broadcast" && !msg.key.fromMe) {
+    // ✅ AutoReact
+    if (global.autoreact && jid !== "status@broadcast") {
       try {
-        // ⏳ Ignore historical messages sent more than 15 seconds ago (prevents connection boot floods)
-        const msgTime = msg.messageTimestamp?.low || msg.messageTimestamp || 0;
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (currentTime - msgTime > 15) return; 
-
-        // Introduce human-like staggered delay to clear structural thresholds
-        const reactionDelay = Math.floor(Math.random() * 2000) + 1500;
-        await delay(reactionDelay);
-
-        const hearts = global.autoreactEmojis || [
+        const hearts = [
           "❤️","☣️","🅣","🧡","💛","💚","💙","💜",
           "🖤","🤍","🤎","💕","💞","💓",
           "💗","💖","💘","💝","🇵🇰","♥️"
@@ -177,10 +164,7 @@ async function startBot() {
         const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
         await sock.sendMessage(jid, { react: { text: randomHeart, key: msg.key } });
       } catch (err) {
-        // Silence rate-overlimit errors completely so they don't print noise in logs
-        if (!err.message?.includes("rate-overlimit") && !err.toString().includes("rate-overlimit")) {
-          console.error("❌ AutoReact Error:", err.message);
-        }
+        console.error("❌ AutoReact Error:", err.message);
       }
     }  
 
@@ -218,7 +202,7 @@ async function startBot() {
     // ✅ AntilinkKick
     if (
       jid.endsWith("@g.us") &&
-      (global.antilinkick[jid] === true || settings.antiLinkKick === true) &&
+      global.antilinkick[jid] === true &&
       /(chat\.whatsapp\.com|t\.me|discord\.gg|wa\.me|bit\.ly|youtu\.be|https?:\/\/)/i.test(text) &&
       !msg.key.fromMe
     ) {
@@ -265,7 +249,7 @@ async function startBot() {
         if (action === "add") {
           message = `
 ┏━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┓
-   💠 *WELCOME* 💠
+   💠 *WELCOME TO HELL* 💠
 ┗━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┛
 
 👹 *Hey ${tag}, Welcome to*  
@@ -276,7 +260,7 @@ async function startBot() {
 『 ${groupDesc} 』
 
 💀 *Attitude ON, Rules OFF*  
-👾 *${settings.botName || "SHABAAN GILL-MD"}* under command of *${global.ownerName}* welcomes you with POWER ⚡
+👾 *${settings.botName || "MEGATRON BOT"} welcomes you with POWER* ⚡
           `;
         } else if (action === "remove") {
           message = `
@@ -286,7 +270,7 @@ async function startBot() {
 
 💔 ${tag} *has left the battlefield...*  
 ⚡ *Now only ${memberCount - 1} members remain in ${groupName}*  
-☠️ *System doesn’t forget easily...*  
+☠️ *Hell doesn’t forget easily...*  
           `;
         }
 
@@ -301,4 +285,5 @@ async function startBot() {
 }
 
 startBot();
-      
+
+                                              
