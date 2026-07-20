@@ -60,7 +60,7 @@ function promptForPhoneNumber() {
     console.log("=============================================");
     
     rl.question(
-      "📌 Enter your WhatsApp phone number (e.g., 923143007893):\n👉 ",
+      "📌 Enter your WhatsApp phone number (e.g., 447506101397):\n👉 ",
       (input) => {
         rl.close();
         
