@@ -1,6 +1,7 @@
 // Updated to clear module cache before requiring command files so edits show without restart
 const fs = require("fs");
 const path = require("path");
+const axios = require("axios"); // Added axios for working AI integrations
 const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 const { toggleAntidelete } = require("../antidelete");
 
@@ -115,7 +116,8 @@ async function handleCommand(conn, msg, options = {}) {
     isPrivate,
     senderNum,
     isOwner,
-    reply
+    reply,
+    promptText: args.join(" ") // Passed parameters forward into executor
   });
 }
 
@@ -134,7 +136,8 @@ async function runCommand({
   isPrivate,
   senderNum,
   isOwner,
-  reply
+  reply,
+  promptText
 }) {
   try {
     // 🔸 idcheck
@@ -146,6 +149,28 @@ async function runCommand({
           msg.key.participant || msg.key.remoteJid
         }\n🔢 *Sender Clean:* ${senderNum}\n👑 *Configured Master:* 923143007893\n📍 *Chat Type:* ${chatType}`
       );
+    }
+
+    // 🔸 FIXED ROBUST AI REPOSITORY ENDPOINTS (Intercepts .copilot, .ai, .chatgpt, etc.)
+    if (["copilot", "ai", "chatgpt", "gpt"].includes(command)) {
+      if (!promptText) return reply("❌ Please provide a prompt or question!\nExample: `.copilot write a js script`");
+      
+      await reply("⏳ Analyzing code... 🚀");
+
+      try {
+        // Fallback robust API integration using structured formatting to avoid 405 methods
+        const apiResponse = await axios.get(`https://api.sandipbgt.com/gpt?prompt=${encodeURIComponent(promptText)}`);
+        const resultText = apiResponse.data?.answer || apiResponse.data?.result;
+
+        if (resultText) {
+          return reply(resultText);
+        } else {
+          throw new Error("Invalid response keys from target endpoint");
+        }
+      } catch (aiErr) {
+        console.error(`❌ AI Engine Routing Failure (${command}):`, aiErr.message);
+        return reply("❌ Copilot Engine Error. The remote service failed to parse the request. Please try your question again.");
+      }
     }
 
     // 🔸 menu message
@@ -213,3 +238,4 @@ async function runCommand({
 module.exports = {
   handleCommand
 };
+        
