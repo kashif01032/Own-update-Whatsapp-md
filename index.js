@@ -8,6 +8,7 @@
 
 const fs = require("fs");
 const P = require("pino");
+const readline = require("readline");
 const { 
   default: makeWASocket, 
   useMultiFileAuthState, 
@@ -44,6 +45,38 @@ function canPerformAction(jid, action) {
     return true;
   }
   return false;
+}
+
+// ✅ Function to prompt user for phone number
+function promptForPhoneNumber() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    console.log("\n=============================================");
+    console.log("📱 WHATSAPP BOT PAIRING SETUP");
+    console.log("=============================================");
+    
+    rl.question(
+      "📌 Enter your WhatsApp phone number (e.g., 923143007893):\n👉 ",
+      (input) => {
+        rl.close();
+        
+        // Clean phone number: remove +, spaces, dashes, leaving only pure digits
+        const cleanNumber = input.trim().replace(/\D/g, '');
+        
+        if (!cleanNumber || cleanNumber.length < 10) {
+          console.log("❌ Invalid phone number. Please try again.\n");
+          resolve(promptForPhoneNumber()); // Recursively ask again
+        } else {
+          console.log(`✅ Phone number set: ${cleanNumber}\n`);
+          resolve(cleanNumber);
+        }
+      }
+    );
+  });
 }
 
 async function startBot() {
@@ -105,16 +138,16 @@ async function startBot() {
       pairingCodeRequested = true;
       
       setTimeout(async () => {
+        // ✅ Get phone number from environment or prompt user
         let phoneNumber = process.env.PHONE_NUMBER;
 
         if (!phoneNumber) {
-          console.log("❌ ERROR: You must add 'PHONE_NUMBER' to your Railway Variables tab.");
-          pairingCodeRequested = false; // Reset to allow retry on next connection update
-          return;
+          console.log("📌 No PHONE_NUMBER found in environment variables.");
+          console.log("⏳ Please provide your phone number to generate pairing code...\n");
+          phoneNumber = await promptForPhoneNumber();
+        } else {
+          phoneNumber = phoneNumber.replace(/\D/g, '');
         }
-
-        // Clean phone number: remove +, spaces, dashes, leaving only pure digits
-        phoneNumber = phoneNumber.replace(/\D/g, '');
 
         try {
           console.log(`📱 Requesting pairing code for: ${phoneNumber}`);
@@ -124,7 +157,9 @@ async function startBot() {
             console.log("\n=============================================");
             console.log("🔗 WHATSAPP PAIRING CODE:");
             console.log(`👉  ${code}  👈`);
-            console.log("=============================================\n");
+            console.log("=============================================");
+            console.log("⏱️  This code is valid for 15 minutes.");
+            console.log("📱 Open WhatsApp on your phone and enter this code to pair.\n");
           } else {  
             console.log("❌ Pairing code generation returned empty. Check number format.");
             pairingCodeRequested = false;
