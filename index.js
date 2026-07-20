@@ -7,14 +7,12 @@
 // =============================================
 
 const fs = require("fs");
-const path = require("path");
 const P = require("pino");
 const { 
   default: makeWASocket, 
   useMultiFileAuthState, 
   fetchLatestBaileysVersion, 
-  DisconnectReason,
-  delay
+  DisconnectReason 
 } = require("@whiskeysockets/baileys");
 
 const { handleCommand } = require("./menu/case");
@@ -49,22 +47,12 @@ async function startBot() {
 
   global.sock = sock;
   global.settings = settings;
-  global.signature = settings.signature || "> 𝗦𝗛𝗔𝗕𝗔𝗔𝗡 𝗚𝗜𝗟𝗟 ❦ ✓";
+  global.signature = settings.signature || "> 𝗧𝗔𝗬𝗬𝗔𝗕 ❦ ✓";
   global.owner = ownerJid;
   global.ownerNumber = ownerRaw;
-  global.ownerName = settings.ownerName || "Shabaan Gill";
 
-  // 🔐 Granular Mode Management Layer ("public", "private", "self")
-  if (!global.mode) {
-    if (settings.mode) {
-      global.mode = settings.mode.toLowerCase();
-    } else {
-      global.mode = settings.public === false ? "private" : "public";
-    }
-  }
-
-  // Pass operating environments backward compatibly 
-  global.publicMode = global.mode === "public"; 
+  // ✅ Read public/private status from settings config dynamically
+  global.publicMode = settings.public !== undefined ? settings.public : true; 
 
   // ✅ Active Feature Flags mapped explicitly from your configuration file
   global.antilink = {};
@@ -75,9 +63,8 @@ async function startBot() {
   global.autoreact = settings.autoReact || false;
   global.autostatus = settings.autoStatusView || false;
 
-  console.log("✅ BOT OWNER JID:", global.owner);
-  console.log("👤 BOT OWNER NAME: ↳ ━━━ ❖ ＳＨＡＢＡＡＮ  ＧＩＬＬ ❖ ━━━");
-  console.log(`🔓 BOT ROUTING MODE: [${global.mode.toUpperCase()}]`);
+  console.log("✅ BOT OWNER:", global.owner);
+  console.log(`🔓 BOT STATUS: ${global.publicMode ? "Public Mode Enabled (Active in all chats)" : "Private Mode Enabled (Owner only)"}`);
 
   sock.ev.on("creds.update", saveCreds);
 
@@ -91,20 +78,19 @@ async function startBot() {
     }  
 
     // Trigger pairing code if we are not registered and haven't requested one this lifecycle yet
-    if (!sock.authState.creds.registered && !pairingCodeRequested) {
+    if (!state.creds?.registered && !pairingCodeRequested) {
       pairingCodeRequested = true;
       
-      (async () => {
-        await delay(6000); // Allow data synchronization layers to settle down
-
-        let phoneNumber = process.env.PHONE_NUMBER || global.ownerNumber;
+      setTimeout(async () => {
+        let phoneNumber = process.env.PHONE_NUMBER;
 
         if (!phoneNumber) {
           console.log("❌ ERROR: You must add 'PHONE_NUMBER' to your Railway Variables tab.");
-          pairingCodeRequested = false; 
+          pairingCodeRequested = false; // Reset to allow retry on next connection update
           return;
         }
 
+        // Clean phone number: remove +, spaces, dashes, leaving only pure digits
         phoneNumber = phoneNumber.replace(/\D/g, '');
 
         try {
@@ -112,10 +98,9 @@ async function startBot() {
           const code = await sock.requestPairingCode(phoneNumber);
           
           if (code) {  
-            const formattedCode = code?.match(/.{1,4}/g)?.join("-") || code;
             console.log("\n=============================================");
             console.log("🔗 WHATSAPP PAIRING CODE:");
-            console.log(`👉  \x1b[36m${formattedCode}\x1b[0m  👈`);
+            console.log(`👉  ${code}  👈`);
             console.log("=============================================\n");
           } else {  
             console.log("❌ Pairing code generation returned empty. Check number format.");
@@ -125,7 +110,7 @@ async function startBot() {
           console.error("❌ Failed to request pairing code:", err.message);
           pairingCodeRequested = false;
         }
-      })();
+      }, 5000); 
     }
 
     if (connection === "close") {  
@@ -141,21 +126,10 @@ async function startBot() {
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
     const msg = messages[0];
-    if (!msg.message) return; 
+    if (!msg.message) return; // Ignore status updates or empty payload notifications
     
     const jid = msg.key.remoteJid;
-    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || "";
-
-    const senderId = msg.key.fromMe
-      ? sock.user.id.split(":")[0] + "@s.whatsapp.net"
-      : msg.key.participant || msg.key.remoteJid;
-    const senderNum = senderId.replace(/\D/g, "");
-    const cleanOwnerNum = global.ownerNumber.replace(/\D/g, "");
-    const isOwner = senderNum === cleanOwnerNum || msg.key.fromMe;
-
-    // 🔒 Core Multi-Tier Authorization Router Execution
-    if (global.mode === "self" && !isOwner) return; 
-    if (global.mode === "private" && !isOwner) return; 
+    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
 
     // ✅ AntiDelete
     if (settings.ANTIDELETE === true) {  
@@ -179,21 +153,18 @@ async function startBot() {
       }  
     }  
 
-    // ✅ AutoReact (Throttled with randomized task delays to prevent rate limits)
-    if (global.autoreact && jid !== "status@broadcast" && !msg.key.fromMe) {
+    // ✅ AutoReact
+    if (global.autoreact && jid !== "status@broadcast") {
       try {
-        const reactionDelay = Math.floor(Math.random() * 1500) + 1000;
-        await delay(reactionDelay);
-
-        const defaultList = ["❤️","☣️","🅣","🧡","💛","💚","💙","💜","🔥","⚡","👑","✨","💎","💀"];
-        const reactionList = global.autoreactEmojis || defaultList;
-        const randomHeart = reactionList[Math.floor(Math.random() * reactionList.length)];
-        
+        const hearts = [
+          "❤️","☣️","🅣","🧡","💛","💚","💙","💜",
+          "🖤","🤍","🤎","💕","💞","💓",
+          "💗","💖","💘","💝","🇵🇰","♥️"
+        ];
+        const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
         await sock.sendMessage(jid, { react: { text: randomHeart, key: msg.key } });
       } catch (err) {
-        if (!err.message?.includes("rate-overlimit")) {
-          console.error("❌ AutoReact Error:", err.message);
-        }
+        console.error("❌ AutoReact Error:", err.message);
       }
     }  
 
@@ -212,7 +183,7 @@ async function startBot() {
       return;  
     }  
 
-    // ✅ Antilink Execution Handling
+    // ✅ Antilink
     if (
       jid.endsWith("@g.us") &&
       (global.antilink[jid] === true || settings.antiLink === true) &&
@@ -228,19 +199,17 @@ async function startBot() {
       }
     }
 
-    // ✅ AntilinkKick Integration Mapping Router
+    // ✅ AntilinkKick
     if (
       jid.endsWith("@g.us") &&
-      (global.antilinkick[jid] === true || settings.antiLinkKick === true) &&
+      global.antilinkick[jid] === true &&
       /(chat\.whatsapp\.com|t\.me|discord\.gg|wa\.me|bit\.ly|youtu\.be|https?:\/\/)/i.test(text) &&
       !msg.key.fromMe
     ) {
       try {
-        if (AntiLinkKick && typeof AntiLinkKick.checkAntilinkKick === "function") {
-          await AntiLinkKick.checkAntilinkKick({ conn: sock, m: msg });
-        }
+        await AntiLinkKick.checkAntilinkKick({ conn: sock, m: msg });
       } catch (err) {
-        console.error("❌ AntiLinkKick Error:", err.message || err);
+        console.error("❌ AntilinkKick Error:", err.message || err);
       }
     }
 
@@ -280,7 +249,7 @@ async function startBot() {
         if (action === "add") {
           message = `
 ┏━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┓
-   💠 *WELCOME* 💠
+   💠 *WELCOME TO HELL* 💠
 ┗━━━🔥༺ 𓆩💀𓆪 ༻🔥━━━┛
 
 👹 *Hey ${tag}, Welcome to*  
@@ -291,7 +260,7 @@ async function startBot() {
 『 ${groupDesc} 』
 
 💀 *Attitude ON, Rules OFF*  
-👾 *${settings.botName || "SHABAAN GILL-MD"}* under command of *${global.ownerName}* welcomes you with POWER ⚡
+👾 *${settings.botName || "MEGATRON BOT"} welcomes you with POWER* ⚡
           `;
         } else if (action === "remove") {
           message = `
@@ -301,7 +270,7 @@ async function startBot() {
 
 💔 ${tag} *has left the battlefield...*  
 ⚡ *Now only ${memberCount - 1} members remain in ${groupName}*  
-☠️ *System doesn’t forget easily...*  
+☠️ *Hell doesn’t forget easily...*  
           `;
         }
 
@@ -316,4 +285,5 @@ async function startBot() {
 }
 
 startBot();
-          
+
+    
