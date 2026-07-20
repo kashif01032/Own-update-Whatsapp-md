@@ -29,6 +29,22 @@ console.log('git commit -m "sync configuration states from settings.js"');
 console.log("git push origin main");
 console.log("=============================================\n");
 
+// 🔥 RATE LIMITING SYSTEM
+const rateLimitMap = new Map();
+const RATE_LIMIT_DELAY = 1000; // 1 second between reactions per chat
+
+function canPerformAction(jid, action) {
+  const key = `${jid}:${action}`;
+  const now = Date.now();
+  const lastTime = rateLimitMap.get(key) || 0;
+  
+  if (now - lastTime >= RATE_LIMIT_DELAY) {
+    rateLimitMap.set(key, now);
+    return true;
+  }
+  return false;
+}
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info");
   const { version } = await fetchLatestBaileysVersion();
@@ -144,8 +160,8 @@ async function startBot() {
       }  
     }  
 
-    // ✅ AutoTyping
-    if (global.autotyping && jid !== "status@broadcast") {  
+    // ✅ AutoTyping with Rate Limiting
+    if (global.autotyping && jid !== "status@broadcast" && canPerformAction(jid, "typing")) {  
       try {  
         await sock.sendPresenceUpdate('composing', jid);  
       } catch (err) {  
@@ -153,8 +169,8 @@ async function startBot() {
       }  
     }  
 
-    // ✅ AutoReact
-    if (global.autoreact && jid !== "status@broadcast") {
+    // ✅ AutoReact with Rate Limiting
+    if (global.autoreact && jid !== "status@broadcast" && canPerformAction(jid, "react")) {
       try {
         const hearts = [
           "❤️","☣️","🅣","🧡","💛","💚","💙","💜",
@@ -164,12 +180,15 @@ async function startBot() {
         const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
         await sock.sendMessage(jid, { react: { text: randomHeart, key: msg.key } });
       } catch (err) {
-        console.error("❌ AutoReact Error:", err.message);
+        // Silently ignore rate limit errors for reactions
+        if (!err.message?.includes("rate")) {
+          console.error("❌ AutoReact Error:", err.message);
+        }
       }
     }  
 
-    // ✅ AutoStatus View
-    if (global.autostatus && jid === "status@broadcast") {  
+    // ✅ AutoStatus View with Rate Limiting
+    if (global.autostatus && jid === "status@broadcast" && canPerformAction(jid, "status")) {  
       try {  
         await sock.readMessages([{  
           remoteJid: jid,  
@@ -270,7 +289,7 @@ async function startBot() {
 
 💔 ${tag} *has left the battlefield...*  
 ⚡ *Now only ${memberCount - 1} members remain in ${groupName}*  
-☠️ *Hell doesn’t forget easily...*  
+☠️ *Hell doesn't forget easily...*  
           `;
         }
 
