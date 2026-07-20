@@ -1,5 +1,5 @@
 // 📂 File: autoreact.js
-// 💖 AutoReact System — TAYYAB HELL-MD
+// 💖 AutoReact System — ━━━ ❖ ＳＨＡＢＡＡＮ  ＧＩＬＬ ❖ ━━━
 
 const fs = require("fs");
 const path = require("path");
@@ -54,7 +54,10 @@ module.exports = async function ({ conn, m, reply, args, jid }) {
 `╭━━━〔 *💖 AUTO-REACT STATUS* 〕━━━╮
 ┃ ${mode === "on" ? "✅ 𝑨𝒖𝒕𝒐-𝑹𝒆𝒂𝒄𝒕: *ENABLED*" : "❌ 𝑨𝒖𝒕𝒐-𝑹𝒆𝒂𝒄𝒕: *DISABLED*"}
 ┃ 👤 𝑻𝒐𝒈𝒈𝒍𝒆𝒅 𝒃𝒚: +${senderNum}
-┃ 💜 𝑷𝒐𝒘𝒆𝒓𝒆𝒅 𝒃𝒚: 𝑻𝒂𝒚𝒚𝒂𝒃 𝑬𝒙𝒑𝒍𝒐𝒊𝒕𝒔
+┃ 
+┃ ╭━━━━━━━━━━━━━━━━━━━╮
+┃ ┃ 💜 Sʜᴀʙᴀᴀɴ Gɪʟʟ 💜
+┃ ╰━━━━━━━━━━━━━━━━━━━╯
 ╰━━━━━━━━━━━━━━━━━━━╯`
     );
 
