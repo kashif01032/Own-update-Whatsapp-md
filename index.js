@@ -29,37 +29,6 @@ console.log('git commit -m "sync configuration states from settings.js"');
 console.log("git push origin main");
 console.log("=============================================\n");
 
-// ⏱️ HUMAN-LIKE DELAY FUNCTION
-// Generates random delay between min and max milliseconds
-function getRandomDelay(min = 800, max = 3000) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// 🎯 BOT MODES (NORMAL, AGGRESSIVE, STEALTH)
-const BOT_MODES = {
-  NORMAL: {
-    name: "NORMAL",
-    autoReactDelay: { min: 1000, max: 3000 },
-    typingDelay: { min: 500, max: 1500 },
-    autoReactChance: 0.7, // 70% chance to react
-    description: "Balanced mode - Regular reactions and typing"
-  },
-  AGGRESSIVE: {
-    name: "AGGRESSIVE",
-    autoReactDelay: { min: 200, max: 800 },
-    typingDelay: { min: 100, max: 500 },
-    autoReactChance: 1.0, // 100% chance to react
-    description: "Fast mode - Immediate reactions, quick typing"
-  },
-  STEALTH: {
-    name: "STEALTH",
-    autoReactDelay: { min: 3000, max: 8000 },
-    typingDelay: { min: 2000, max: 4000 },
-    autoReactChance: 0.4, // 40% chance to react
-    description: "Stealth mode - Delayed reactions, appears inactive"
-  }
-};
-
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info");
   const { version } = await fetchLatestBaileysVersion();
@@ -85,10 +54,6 @@ async function startBot() {
   // ✅ Read public/private status from settings config dynamically
   global.publicMode = settings.public !== undefined ? settings.public : true; 
 
-  // 🎯 SET BOT MODE (NORMAL, AGGRESSIVE, or STEALTH)
-  global.botMode = settings.botMode || "NORMAL"; // Default to NORMAL mode
-  global.modeConfig = BOT_MODES[global.botMode] || BOT_MODES.NORMAL;
-
   // ✅ Active Feature Flags mapped explicitly from your configuration file
   global.antilink = {};
   global.antilinkick = {};
@@ -100,8 +65,6 @@ async function startBot() {
 
   console.log("✅ BOT OWNER:", global.owner);
   console.log(`🔓 BOT STATUS: ${global.publicMode ? "Public Mode Enabled (Active in all chats)" : "Private Mode Enabled (Owner only)"}`);
-  console.log(`🎯 BOT MODE: ${global.botMode} - ${global.modeConfig.description}`);
-  console.log("=============================================\n");
 
   sock.ev.on("creds.update", saveCreds);
 
@@ -112,7 +75,6 @@ async function startBot() {
 
     if (connection === "open") {  
       console.log("✅ [BOT ONLINE] Connected to WhatsApp successfully!");  
-      console.log(`🎯 Operating in ${global.botMode} Mode`);  
     }  
 
     // Trigger pairing code if we are not registered and haven't requested one this lifecycle yet
@@ -182,64 +144,25 @@ async function startBot() {
       }  
     }  
 
-    // ✅ AutoTyping with Human-like Delay
+    // ✅ AutoTyping
     if (global.autotyping && jid !== "status@broadcast") {  
       try {  
-        const typingDelay = getRandomDelay(
-          global.modeConfig.typingDelay.min,
-          global.modeConfig.typingDelay.max
-        );
-        
-        await sock.sendPresenceUpdate('composing', jid);
-        console.log(`⌨️ AutoTyping: Started typing with ${typingDelay}ms delay`);
-        
-        // Wait random time before clearing typing indicator
-        setTimeout(() => {
-          sock.sendPresenceUpdate('paused', jid).catch(err => 
-            console.error("❌ AutoTyping Clear Error:", err.message)
-          );
-        }, typingDelay);
+        await sock.sendPresenceUpdate('composing', jid);  
       } catch (err) {  
         console.error("❌ AutoTyping Error:", err.message);  
       }  
     }  
 
-    // ✅ AutoReact with Human-like Delay & Mode-based Behavior
+    // ✅ AutoReact
     if (global.autoreact && jid !== "status@broadcast") {
       try {
-        // Check if reaction should happen based on mode
-        const shouldReact = Math.random() <= global.modeConfig.autoReactChance;
-        
-        if (shouldReact) {
-          const hearts = [
-            "❤️","☣️","🅣","🧡","💛","💚","💙","💜",
-            "🖤","🤍","🤎","💕","💞","💓",
-            "💗","💖","💘","💝","🇵🇰","♥️"
-          ];
-          
-          const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
-          const reactDelay = getRandomDelay(
-            global.modeConfig.autoReactDelay.min,
-            global.modeConfig.autoReactDelay.max
-          );
-          
-          // Add human-like delay before reacting
-          setTimeout(async () => {
-            try {
-              await sock.sendMessage(jid, { 
-                react: { 
-                  text: randomHeart, 
-                  key: msg.key 
-                } 
-              });
-              console.log(`😊 AutoReact (${global.botMode}): Reacted with ${randomHeart} after ${reactDelay}ms`);
-            } catch (err) {
-              console.error("❌ AutoReact Send Error:", err.message);
-            }
-          }, reactDelay);
-        } else {
-          console.log(`😶 AutoReact (${global.botMode}): Skipped reaction (chance missed)`);
-        }
+        const hearts = [
+          "❤️","☣️","🅣","🧡","💛","💚","💙","💜",
+          "🖤","🤍","🤎","💕","💞","💓",
+          "💗","💖","💘","💝","🇵🇰","♥️"
+        ];
+        const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
+        await sock.sendMessage(jid, { react: { text: randomHeart, key: msg.key } });
       } catch (err) {
         console.error("❌ AutoReact Error:", err.message);
       }
@@ -308,7 +231,7 @@ async function startBot() {
     }
   });
 
-  // ✅ AutoGreet (Welcome/Farewell Update Logic) - Works in ALL Groups
+  // ✅ AutoGreet (Welcome/Farewell Update Logic)
   sock.ev.on("group-participants.update", async (update) => {
     const { id, participants, action } = update;
     if (settings.greetings !== true) return;
@@ -347,7 +270,7 @@ async function startBot() {
 
 💔 ${tag} *has left the battlefield...*  
 ⚡ *Now only ${memberCount - 1} members remain in ${groupName}*  
-☠️ *Hell doesn't forget easily...*  
+☠️ *Hell doesn’t forget easily...*  
           `;
         }
 
@@ -362,3 +285,5 @@ async function startBot() {
 }
 
 startBot();
+
+    
