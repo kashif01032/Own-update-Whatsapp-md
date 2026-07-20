@@ -14,6 +14,7 @@ const config = {
   autoTyping: false,        // ⌨️ Fake Typing
   autoReact: false,         // 💖 Auto Emoji Reaction
   autoStatusView: false,    // 👁️ Auto-View Status
+  autoRecording: false,     // 🎙️ Added missing setting for recording presence
   public: true,             // 🌍 Public Mode Enabled (Active in all chats)
   antiLink: false,          // 🚫 Delete Links in Groups
   antiBug: false,           // 🛡️ Prevent Malicious Crashes
