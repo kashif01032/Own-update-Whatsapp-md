@@ -4,8 +4,8 @@ const path = require("path");
 const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 const { toggleAntidelete } = require("../antidelete");
 
-// Default mode
-if (!global.mode) global.mode = "self";
+// ✅ FIX: START IN PUBLIC MODE - Bot works everywhere
+if (!global.mode) global.mode = "public";
 
 // Owner-only commands list
 const ownerOnlyCommands = [
@@ -41,7 +41,7 @@ try {
 // ===============================
 // 🔹 MAIN COMMAND HANDLER
 // ===============================
-async function handleCommand(conn, msg) {
+async function handleCommand(conn, msg, options = {}) {
   const text =
     msg.message?.conversation ||
     msg.message?.extendedTextMessage?.text ||
@@ -57,6 +57,10 @@ async function handleCommand(conn, msg) {
 
   const chatId = msg.key.remoteJid;
   const isGroup = chatId.endsWith("@g.us");
+  const isStatus = chatId === "status@broadcast";
+  const isCommunity = chatId.includes("@newsletter") || chatId.includes("@community");
+  const isPrivate = !isGroup && !isStatus && !isCommunity;
+  
   const senderId = msg.key.fromMe
     ? conn.user.id.split(":")[0] + "@s.whatsapp.net"
     : msg.key.participant || msg.key.remoteJid;
@@ -70,7 +74,7 @@ async function handleCommand(conn, msg) {
 
   const reply = (text) => conn.sendMessage(chatId, { text }, { quoted: msg });
 
-  // 🔸 Mode control
+  // 🔸 Mode control - OWNER ONLY
   if (command === "self") {
     if (!isOwner)
       return reply("🚫 *Only Shabaan Gill can switch modes!*");
@@ -88,10 +92,12 @@ async function handleCommand(conn, msg) {
   }
 
   // 🔸 Mode restrictions
+  // In SELF mode: only owner + allowed public commands
   if (global.mode === "self" && !isOwner && !["menu", "repo", "idcheck"].includes(command)) {
-    return;
+    return; // Silent return in self mode for non-owners
   }
 
+  // In PUBLIC mode: owner-only commands restricted to owner only
   if (global.mode === "public" && ownerOnlyCommands.includes(command) && !isOwner) {
     return reply("💀 *OWNER ONLY COMMAND!* You are not Shabaan Gill!");
   }
@@ -104,7 +110,11 @@ async function handleCommand(conn, msg) {
     command,
     chatId,
     isGroup,
+    isStatus,
+    isCommunity,
+    isPrivate,
     senderNum,
+    isOwner,
     reply
   });
 }
@@ -119,17 +129,22 @@ async function runCommand({
   command,
   chatId,
   isGroup,
+  isStatus,
+  isCommunity,
+  isPrivate,
   senderNum,
+  isOwner,
   reply
 }) {
   try {
     // 🔸 idcheck
     if (command === "idcheck") {
       const botId = conn.user.id || "";
+      const chatType = isGroup ? "Group" : isStatus ? "Status" : isCommunity ? "Community" : "Private";
       return reply(
         `🤖 *Bot ID:* ${botId}\n📤 *Sender JID:* ${
           msg.key.participant || msg.key.remoteJid
-        }\n🔢 *Sender Clean:* ${senderNum}\n👑 *Configured Master:* 923143007893`
+        }\n🔢 *Sender Clean:* ${senderNum}\n👑 *Configured Master:* 923143007893\n📍 *Chat Type:* ${chatType}`
       );
     }
 
@@ -159,7 +174,11 @@ async function runCommand({
         command,
         jid: chatId,
         isGroup,
+        isStatus,
+        isCommunity,
+        isPrivate,
         sender: senderNum,
+        isOwner,
         reply
       });
     }
@@ -172,10 +191,10 @@ async function runCommand({
       } catch (e) {}
       const commandFile = require(filePath);
       if (typeof commandFile === "function") {
-        return await commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
+        return await commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
       }
       if (typeof commandFile.run === "function") {
-        return await commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
+        return await commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
       }
     }
 
