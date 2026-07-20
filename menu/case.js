@@ -1,24 +1,27 @@
-// Updated to clear module cache before requiring command files so edits show without restart
+---
+
+# ✅ **Optimized & Fixed Command Handler (case.js)**  
+Friendly, stable, and ready for production.
+
+```js
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios"); // Added axios for working AI integrations
+const axios = require("axios");
 const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 const { toggleAntidelete } = require("../antidelete");
 
-// ✅ FIX: START IN PUBLIC MODE - Bot works everywhere
+// Default mode
 if (!global.mode) global.mode = "public";
 
-// Owner-only commands list
+// Owner-only commands
 const ownerOnlyCommands = [
-  "video2", "song2", "kick", "add", "nice", "tagall",
-  "antilink", "antilinkick", "autostatus", "autoreact",
-  "autogreet", "autotyping", "autoread", "block", "unblock",
-  "shutdown", "restart", "setbio", "setname", "setpp", "save",
-  "join", "delaymsg", "del", "reactch", "kickall", "antibug",
-  "leave", "open", "close", "tagadmin", "hidetag", "listactive",
-  "changename", "closetime", "warn", "promote", "demote",
-  "promoteall", "demoteall", "say", "cpp", "harami", "ghostping",
-  "adminkill", "delaymsg", "autorecording"
+  "video2","song2","kick","add","nice","tagall","antilink","antilinkick",
+  "autostatus","autoreact","autogreet","autotyping","autoread","block",
+  "unblock","shutdown","restart","setbio","setname","setpp","save","join",
+  "delaymsg","del","reactch","kickall","antibug","leave","open","close",
+  "tagadmin","hidetag","listactive","changename","closetime","warn",
+  "promote","demote","promoteall","demoteall","say","cpp","harami",
+  "ghostping","adminkill","delaymsg","autorecording"
 ];
 
 // Load menu.js
@@ -30,18 +33,17 @@ try {
   console.error("❌ Error loading menu.js:", err);
 }
 
-// Load core.js if exists
+// Load core.js
 let core;
 try {
-  const corePath = path.join(__dirname, "./core.js");
-  core = require(corePath);
+  core = require("./core.js");
 } catch (err) {
   console.error("❌ Error loading core.js:", err);
 }
 
-// ===============================
+// =====================================================
 // 🔹 MAIN COMMAND HANDLER
-// ===============================
+// =====================================================
 async function handleCommand(conn, msg, options = {}) {
   const text =
     msg.message?.conversation ||
@@ -52,7 +54,8 @@ async function handleCommand(conn, msg, options = {}) {
 
   if (!text.startsWith(".")) return;
 
-  const parts = text.trim().split(/ +/);
+  // FIXED: Correct command splitting
+  const parts = text.trim().split(/\s+/);
   const command = parts[0].slice(1).toLowerCase();
   const args = parts.slice(1);
 
@@ -61,49 +64,41 @@ async function handleCommand(conn, msg, options = {}) {
   const isStatus = chatId === "status@broadcast";
   const isCommunity = chatId.includes("@newsletter") || chatId.includes("@community");
   const isPrivate = !isGroup && !isStatus && !isCommunity;
-  
+
   const senderId = msg.key.fromMe
     ? conn.user.id.split(":")[0] + "@s.whatsapp.net"
     : msg.key.participant || msg.key.remoteJid;
 
   const senderNum = senderId.replace(/\D/g, "");
   const botNum = (conn.user.id || "").replace(/\D/g, "");
-  
-  // Strict Owner Checks (Matches your absolute number OR if the bot sends a command to itself)
-  const targetOwnerNum = "923143007893"; 
+
+  const targetOwnerNum = "923143007893";
   const isOwner = senderNum === targetOwnerNum || senderNum.slice(0, 10) === botNum.slice(0, 10);
 
   const reply = (text) => conn.sendMessage(chatId, { text }, { quoted: msg });
 
-  // 🔸 Mode control - OWNER ONLY
+  // Mode switching
   if (command === "self") {
-    if (!isOwner)
-      return reply("🚫 *Only Shabaan Gill can switch modes!*");
-
+    if (!isOwner) return reply("🚫 Only Shabaan Gill can switch modes!");
     global.mode = "self";
-    return reply("🔒 BOT IS NOW IN *SELF MODE* — Only Shabaan Gill can use me!");
+    return reply("🔒 BOT is now in *SELF MODE* — Only Shabaan Gill can use me!");
   }
 
   if (command === "public") {
-    if (!isOwner)
-      return reply("🚫 *Only Shabaan Gill can switch modes!*");
-
+    if (!isOwner) return reply("🚫 Only Shabaan Gill can switch modes!");
     global.mode = "public";
-    return reply("🌍 BOT IS NOW IN *PUBLIC MODE* — Everyone can use me!");
+    return reply("🌍 BOT is now in *PUBLIC MODE* — Everyone can use me!");
   }
 
-  // 🔸 Mode restrictions
-  // In SELF mode: only owner + allowed public commands
+  // Mode restrictions
   if (global.mode === "self" && !isOwner && !["menu", "repo", "idcheck"].includes(command)) {
-    return; // Silent return in self mode for non-owners
+    return;
   }
 
-  // In PUBLIC mode: owner-only commands restricted to owner only
   if (global.mode === "public" && ownerOnlyCommands.includes(command) && !isOwner) {
     return reply("💀 *OWNER ONLY COMMAND!* You are not Shabaan Gill!");
   }
 
-  // Default execution path
   return runCommand({
     conn,
     msg,
@@ -117,13 +112,13 @@ async function handleCommand(conn, msg, options = {}) {
     senderNum,
     isOwner,
     reply,
-    promptText: args.join(" ") // Passed parameters forward into executor
+    promptText: args.join(" ")
   });
 }
 
-// ===============================
+// =====================================================
 // 🔹 COMMAND EXECUTOR
-// ===============================
+// =====================================================
 async function runCommand({
   conn,
   msg,
@@ -140,67 +135,60 @@ async function runCommand({
   promptText
 }) {
   try {
-    // 🔸 idcheck
+    // idcheck
     if (command === "idcheck") {
       const botId = conn.user.id || "";
       const chatType = isGroup ? "Group" : isStatus ? "Status" : isCommunity ? "Community" : "Private";
+
       return reply(
-        `🤖 *Bot ID:* ${botId}\n📤 *Sender JID:* ${
-          msg.key.participant || msg.key.remoteJid
-        }\n🔢 *Sender Clean:* ${senderNum}\n👑 *Configured Master:* 923143007893\n📍 *Chat Type:* ${chatType}`
+        `🤖 *Bot ID:* ${botId}\n📤 *Sender JID:* ${msg.key.participant || msg.key.remoteJid}\n🔢 *Sender Clean:* ${senderNum}\n👑 *Master:* 923143007893\n📍 *Chat Type:* ${chatType}`
       );
     }
 
-    // 🔸 UNIFIED AI HANDLER (Supports copilot, ai, chatgpt, gpt, gemini, llama, claude, mistral)
+    // AI Commands (Unified Handler)
     if (["copilot", "ai", "chatgpt", "gpt", "gemini", "llama", "claude", "mistral"].includes(command)) {
-      if (!promptText) return reply(`❌ Please provide a prompt or question!\nExample: \`.${command} write a quick message\``);
-      
-      await reply(`⏳ ${command.toUpperCase()} is processing your request... 🚀`);
+      if (!promptText) return reply(`❌ Please provide a prompt!\nExample: \`.${command} write a message\``);
 
-      // Provider 1: Core AI router
+      await reply(`⏳ ${command.toUpperCase()} is processing your request...`);
+
       try {
         const response = await axios.get(`https://itzpire.com/ai/gpt3?q=${encodeURIComponent(promptText)}`);
         const resultText = response.data?.data || response.data?.result || response.data?.answer;
-        
+
         if (resultText) return reply(resultText);
-        throw new Error("Empty endpoint response from primary AI engine");
+        throw new Error("Primary AI returned empty response");
+      } catch (err) {
+        console.warn(`⚠️ Primary AI failed for .${command}. Trying backup...`);
 
-      } catch (primaryErr) {
-        console.warn(`⚠️ Primary AI route failed for .${command}. Attempting backup cluster...`);
-
-        // Provider 2: Backup AI cluster
         try {
-          const fallbackResponse = await axios.get(`https://api.vyturex.com/openai?prompt=${encodeURIComponent(promptText)}`);
-          if (fallbackResponse.data) return reply(fallbackResponse.data);
-          throw new Error("Fallback failed to yield response data");
-
-        } catch (fallbackErr) {
-          console.error(`❌ Total service blackout for .${command}:`, fallbackErr.message);
-          return reply("❌ All remote AI generation servers are currently offline or busy. Please try your command again shortly.");
+          const fallback = await axios.get(`https://api.vyturex.com/openai?prompt=${encodeURIComponent(promptText)}`);
+          if (fallback.data) return reply(fallback.data);
+          throw new Error("Backup AI returned empty response");
+        } catch (err2) {
+          console.error(`❌ AI blackout for .${command}:`, err2.message);
+          return reply("❌ All AI servers are offline or busy. Try again shortly.");
         }
       }
     }
 
-    // 🔸 menu message
+    // Menu handler
     if (menuData[command]) {
       const menuMessage = generateWAMessageFromContent(
         chatId,
         { extendedTextMessage: { text: menuData[command] } },
         { userJid: chatId }
       );
-      return await conn.relayMessage(chatId, menuMessage.message, {
-        messageId: menuMessage.key.id
-      });
+      return conn.relayMessage(chatId, menuMessage.message, { messageId: menuMessage.key.id });
     }
 
-    // 🔸 antidelete handler
+    // antidelete
     if (command === "antidelete") {
       return toggleAntidelete({ conn, m: msg, args, reply, jid: chatId });
     }
 
-    // 🔸 core functions
+    // core.js commands
     if (core && core[command] && typeof core[command] === "function") {
-      return await core[command]({
+      return core[command]({
         conn,
         m: msg,
         args,
@@ -216,23 +204,26 @@ async function runCommand({
       });
     }
 
-    // 🔸 individual command files (clear cache so edits show)
+    // Individual command files
     const filePath = path.join(__dirname, "..", `${command}.js`);
     if (fs.existsSync(filePath)) {
       try {
         delete require.cache[require.resolve(filePath)];
       } catch (e) {}
+
       const commandFile = require(filePath);
+
       if (typeof commandFile === "function") {
-        return await commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
+        return commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
       }
+
       if (typeof commandFile.run === "function") {
-        return await commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
+        return commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, isStatus, isCommunity, isPrivate, sender: senderNum, isOwner, reply });
       }
     }
 
-    // 🔸 unknown command
-    return reply("*ᴜɴᴋɴᴏᴡɴ ᴄᴏᴍᴍᴀɴᴅ! ᴛʀʏ `.ᴍᴇɴᴜ` ʙᴇꜰᴏʀᴇ sʜᴏᴡɪɴɢ ᴏꜰꜰ 𓄀*");
+    // Unknown command
+    return reply("*Unknown command! Try `.menu`*");
 
   } catch (err) {
     console.error("⚠️ Error in command execution:", err);
@@ -240,10 +231,7 @@ async function runCommand({
   }
 }
 
-// ===============================
-// 🔹 Export
-// ===============================
-module.exports = {
-  handleCommand
-};
-        
+module.exports = { handleCommand };
+```
+
+---
