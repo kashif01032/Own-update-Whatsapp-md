@@ -157,26 +157,46 @@ async function runCommand({
       
       await reply(`⏳ ${command.toUpperCase()} is processing your request... 🚀`);
 
-      // Provider 1: Core AI router
+      // ----------------------------------------------------
+      // 🚀 CLUSTER ROUTE 1: Ragbot Engine
+      // ----------------------------------------------------
       try {
-        const response = await axios.get(`https://itzpire.com/ai/gpt3?q=${encodeURIComponent(promptText)}`);
-        const resultText = response.data?.data || response.data?.result || response.data?.answer;
+        const response = await axios.get(`https://ragbot-ctl.bhandor.xyz/api/chat?message=${encodeURIComponent(promptText)}`);
+        const resultText = response.data?.data || response.data?.result || response.data?.reply || response.data;
         
-        if (resultText) return reply(resultText);
-        throw new Error("Empty endpoint response from primary AI engine");
+        if (resultText && typeof resultText === "string") return reply(resultText);
+        throw new Error("Cluster Route 1 empty payload exception");
 
       } catch (primaryErr) {
-        console.warn(`⚠️ Primary AI route failed for .${command}. Attempting backup cluster...`);
+        console.warn(`⚠️ Route 1 failed for .${command}. Shifting traffic to Cluster Route 2...`);
 
-        // Provider 2: Backup AI cluster
+        // ----------------------------------------------------
+        // 🚀 CLUSTER ROUTE 2: Widipe Alternative Cluster
+        // ----------------------------------------------------
         try {
-          const fallbackResponse = await axios.get(`https://api.vyturex.com/openai?prompt=${encodeURIComponent(promptText)}`);
-          if (fallbackResponse.data) return reply(fallbackResponse.data);
-          throw new Error("Fallback failed to yield response data");
+          const fallbackResponse = await axios.get(`https://widipe.com/openai?text=${encodeURIComponent(promptText)}`);
+          const fallbackText = fallbackResponse.data?.result || fallbackResponse.data?.reply || fallbackResponse.data;
+          
+          if (fallbackText) return reply(fallbackText);
+          throw new Error("Cluster Route 2 empty payload exception");
 
         } catch (fallbackErr) {
-          console.error(`❌ Total service blackout for .${command}:`, fallbackErr.message);
-          return reply("❌ All remote AI generation servers are currently offline or busy. Please try your command again shortly.");
+          console.warn(`⚠️ Route 2 down. Escalating traffic to Tertiary Cluster Route 3...`);
+
+          // ----------------------------------------------------
+          // 🚀 CLUSTER ROUTE 3: BK9 Multi-Model Cluster
+          // ----------------------------------------------------
+          try {
+            const tertiaryResponse = await axios.get(`https://bk9.fun/ai/chataitxt?q=${encodeURIComponent(promptText)}`);
+            const tertiaryText = tertiaryResponse.data?.BK9 || tertiaryResponse.data?.result || tertiaryResponse.data;
+            
+            if (tertiaryText) return reply(tertiaryText);
+            throw new Error("Cluster Route 3 empty payload exception");
+
+          } catch (finalErr) {
+            console.error(`❌ Total service blackout across all clusters for .${command}:`, finalErr.message);
+            return reply("❌ All remote multi-model AI routing nodes are completely offline or throttling requests. Please try again later.");
+          }
         }
       }
     }
@@ -246,4 +266,4 @@ async function runCommand({
 module.exports = {
   handleCommand
 };
-        
+      
