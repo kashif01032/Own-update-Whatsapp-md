@@ -1,13 +1,13 @@
 {
-  "name": "TAYYAB HELL-MD",
+  "name": "SHABAAN HELL-MD",
   "version": "1.0.0",
-  "description": "WhatsApp Bot Created by Tayyab 🤖",
+  "description": "WhatsApp Bot Created by Shaban 🤖",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Tayyab",
+  "author": "Shabaan",
   "license": "MIT",
   "directories": {
     "lib": "lib",
