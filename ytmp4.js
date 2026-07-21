@@ -12,26 +12,47 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
   try {
     reply('⏳ Downloading video, please wait...');
 
-    // Call public Cobalt API to bypass Railway IP block
-    const cobaltRes = await axios.post('https://api.cobalt.tools/api/json', {
-      url: url,
-      videoQuality: '720'
-    }, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
+    let downloadUrl = null;
+    let videoTitle = 'video';
 
-    const data = cobaltRes.data;
-    if (!data || data.status === 'error' || !data.url) {
-      return reply('❌ Could not fetch video stream from YouTube.');
+    // Primary Attempt: Cobalt v10 API
+    try {
+      const cobaltRes = await axios.post('https://api.cobalt.tools/', {
+        url: url,
+        videoQuality: '720',
+        filenamePattern: 'basic'
+      }, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      });
+
+      if (cobaltRes.data && cobaltRes.data.url) {
+        downloadUrl = cobaltRes.data.url;
+      }
+    } catch (e) {
+      console.log('Cobalt v10 primary failed, trying fallback API...');
     }
 
-    // Download video file stream to temporary path
+    // Secondary Attempt: Fallback Downloader API
+    if (!downloadUrl) {
+      const fallbackRes = await axios.get(`https://api.dreaded.site/api/ytdl/video?url=${encodeURIComponent(url)}`, { timeout: 15000 });
+      if (fallbackRes.data && fallbackRes.data.result && fallbackRes.data.result.downloadUrl) {
+        downloadUrl = fallbackRes.data.result.downloadUrl;
+        videoTitle = fallbackRes.data.result.title || videoTitle;
+      }
+    }
+
+    if (!downloadUrl) {
+      return reply('❌ Could not retrieve video stream. Please check the link and try again.');
+    }
+
+    // Stream video to temporary directory
     const downloadRes = await axios({
       method: 'get',
-      url: data.url,
+      url: downloadUrl,
       responseType: 'stream'
     });
 
@@ -43,16 +64,16 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
       writer.on('error', reject);
     });
 
-    const maxSize = 100 * 1024 * 1024; // 100 MB
+    const maxSize = 100 * 1024 * 1024; // 100 MB limit
     const stats = fs.statSync(tmpVideo);
     if (stats.size > maxSize) {
-      return reply('❌ Video file size is too large to send via WhatsApp (Limit: 100MB).');
+      return reply('❌ Video file size exceeds WhatsApp limit (100MB).');
     }
 
-    // Send video via WhatsApp
+    // Send video
     await conn.sendMessage(jid, {
       video: { url: tmpVideo },
-      caption: 'Downloaded successfully! 🎬',
+      caption: videoTitle,
       mimetype: 'video/mp4'
     }, { quoted: m });
 
@@ -60,7 +81,7 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
     console.error('ytmp4 error:', err);
     reply('❌ Failed to download video: ' + (err.response?.data?.text || err.message || err));
   } finally {
-    // Clean up temporary file after delivery
+    // Clean up temporary local file
     setTimeout(() => {
       if (fs.existsSync(tmpVideo)) {
         try { fs.unlinkSync(tmpVideo); } catch (e) {}
