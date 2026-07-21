@@ -12,23 +12,22 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
   try {
     if (!ytdl.validateURL(url)) return reply('❌ Invalid YouTube URL provided!');
 
-    const info = await ytdl.getInfo(url);
+    // Configure options to bypass "Sign in to confirm you're not a bot" on cloud hosts like Railway
+    const ytdlOptions = {
+      playerClients: ['IOS', 'ANDROID', 'TV'],
+      filter: 'audioandvideo',
+      quality: 'highestvideo'
+    };
+
+    const info = await ytdl.getInfo(url, ytdlOptions);
     const title = (info.videoDetails.title || 'video').replace(/[<>:"/\\|?*]/g, '').slice(0, 50);
 
     // Download progressive audio+video stream directly
     await new Promise((resolve, reject) => {
-      ytdl(url, { 
-        filter: 'audioandvideo', 
-        quality: 'highestvideo',
-        requestOptions: {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          }
-        }
-      })
-      .pipe(fs.createWriteStream(tmpVideo))
-      .on('finish', resolve)
-      .on('error', reject);
+      ytdl(url, ytdlOptions)
+        .pipe(fs.createWriteStream(tmpVideo))
+        .on('finish', resolve)
+        .on('error', reject);
     });
 
     const maxSize = 100 * 1024 * 1024; // 100 MB
@@ -37,7 +36,7 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
       return reply('❌ Video file size is too large to send via WhatsApp (Limit: 100MB).');
     }
 
-    // Send video using direct file path (Supported natively by Baileys)
+    // Send video using direct local file path
     await conn.sendMessage(jid, {
       video: { url: tmpVideo },
       caption: title,
@@ -48,7 +47,7 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
     console.error('ytmp4 error:', err);
     reply('❌ Failed to download video: ' + (err.message || err));
   } finally {
-    // Delay removal slightly so Baileys finishes uploading the file stream
+    // Clean up temporary file after delivery
     setTimeout(() => {
       if (fs.existsSync(tmpVideo)) {
         try { fs.unlinkSync(tmpVideo); } catch (e) {}
