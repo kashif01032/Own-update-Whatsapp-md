@@ -15,7 +15,7 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
     const info = await ytdl.getInfo(url);
     const title = (info.videoDetails.title || 'video').replace(/[<>:"/\\|?*]/g, '').slice(0, 50);
 
-    // Download combined audio+video progressive stream (No external FFmpeg required)
+    // Download progressive audio+video stream directly
     await new Promise((resolve, reject) => {
       ytdl(url, { 
         filter: 'audioandvideo', 
@@ -37,9 +37,9 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
       return reply('❌ Video file size is too large to send via WhatsApp (Limit: 100MB).');
     }
 
-    // Send video via WhatsApp
+    // Send video using direct file path (Supported natively by Baileys)
     await conn.sendMessage(jid, {
-      video: fs.readFileSync(tmpVideo),
+      video: { url: tmpVideo },
       caption: title,
       mimetype: 'video/mp4'
     }, { quoted: m });
@@ -48,9 +48,11 @@ module.exports = async ({ conn, m, args, command, jid, isGroup, sender, reply })
     console.error('ytmp4 error:', err);
     reply('❌ Failed to download video: ' + (err.message || err));
   } finally {
-    // Clean up temporary file safely
-    if (fs.existsSync(tmpVideo)) {
-      try { fs.unlinkSync(tmpVideo); } catch (e) {}
-    }
+    // Delay removal slightly so Baileys finishes uploading the file stream
+    setTimeout(() => {
+      if (fs.existsSync(tmpVideo)) {
+        try { fs.unlinkSync(tmpVideo); } catch (e) {}
+      }
+    }, 10000);
   }
 };
